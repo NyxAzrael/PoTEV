@@ -1,7 +1,7 @@
 # PoTEV
 This decentralized blockchain integrates differential geometry, using unique high-dimensional manifold embeddings (non-self-intersecting with curvature bounds) as ASIC-resistant proof-of-work, creating a novel consensus mechanism based on mathematical topology verification.
 
-```markdown
+
 # Manifold-Chain: 基于高维流形嵌入验证的区块链系统
 
 ![Python Version](https://img.shields.io/badge/python-3.8%2B-blue)
@@ -24,12 +24,12 @@ This decentralized blockchain integrates differential geometry, using unique hig
 
 ## ⚙️ 技术架构
 
-```bash
+```
 ├── Core/
 │   ├── Blockchain.py       # 区块链核心逻辑
 │   └──  Validator.py        # 流形嵌入验证算法
 ├── Docs/
-│   └── Math.md # 数学理论说明   （还没完成）
+│   └── Math.md # 数学理论说明   （还没完成全部）
 └── Tests/
     ├── stress_test.py      # 压力测试脚本  （coming soon）
     └── quantum_sim.py      # 量子攻击模拟  （coming soon）
