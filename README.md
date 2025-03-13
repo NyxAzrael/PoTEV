@@ -29,7 +29,7 @@ This decentralized blockchain integrates differential geometry, using unique hig
 │   ├── Blockchain.py       # 区块链核心逻辑
 │   └──  Validator.py        # 流形嵌入验证算法
 ├── Docs/
-│   └── Math_Background.md # 数学理论说明   （还没完成）
+│   └── Math.md # 数学理论说明   （还没完成）
 └── Tests/
     ├── stress_test.py      # 压力测试脚本  （coming soon）
     └── quantum_sim.py      # 量子攻击模拟  （coming soon）
