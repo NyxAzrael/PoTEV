@@ -24,7 +24,7 @@ This decentralized blockchain integrates differential geometry, using unique hig
 
 ## ⚙️ 技术架构
 
-```
+```bash
 ├── Core/
 │   ├── Blockchain.py       # 区块链核心逻辑
 │   └──  Validator.py        # 流形嵌入验证算法
