@@ -1,127 +1,63 @@
-# 修改后的blockchain.py
-import hashlib
-import json
+import threading
 import time
-import numpy as np
 from Validator import UniqueEmbeddingVerifier
 
 
 class Block:
-    def __init__(self, index, timestamp, transactions, previous_hash, proof_data):
-        self.index = index
-        self.timestamp = timestamp
-        self.transactions = transactions
-        self.previous_hash = previous_hash
-        self.proof_data = proof_data  # 存储A、b和manifold
-        self.hash = self.calculate_hash()
-
-    def calculate_hash(self):
-        """计算区块哈希"""
-        block_string = json.dumps({
-            "index": self.index,
-            "timestamp": self.timestamp,
-            "transactions": self.transactions,
-            "previous_hash": self.previous_hash,
-            "A": self.proof_data["A"].tolist(),
-            "b": self.proof_data["b"].tolist()
-        }, sort_keys=True).encode()
-        return hashlib.sha256(block_string).hexdigest()
+    def __init__(self, curvature, miner_id):
+        self.curvature = curvature
+        self.miner_id = miner_id
+        self.timestamp = time.time()
 
 
 class Blockchain:
-    def __init__(self, n=2, m=5, k=1.0, hardness=20):
-        self.n = n
-        self.m = m
-        self.k = k
-        self.hardness = hardness
-        self.chain = [self.create_genesis_block()]
-        self.pending_transactions = []
-        self.difficulty = 0.5  # 初始搜索范围系数
+    def __init__(self, n, m, k, hardness):
+        self.chain = []
+        self.pending_blocks = []
+        self.mining_event = threading.Event()
+        self.lock = threading.Lock()
+        self.verifier_params = (n, m, k, hardness)
 
-    def create_genesis_block(self):
-        """修复创世区块初始化问题"""
-        return Block(0, time.time(), [], "0", {
-            "A": np.zeros((self.m, 2 * self.n)),
-            "b": np.zeros(self.m),
-            "manifold": np.zeros((10, 2 * self.n))  # 简化初始样本
-        })
+    def broadcast_start(self):
+        with self.lock:
+            self.mining_event.set()
+            self.pending_blocks = []
+        print("\n[区块链] 挖矿开始广播")
 
-    def add_transaction(self, sender, recipient, amount):
-        """添加交易到待处理列表"""
-        self.pending_transactions.append({
-            "sender": sender,
-            "recipient": recipient,
-            "amount": amount,
-            "timestamp": time.time()
-        })
+    def broadcast_stop(self):
+        with self.lock:
+            self.mining_event.clear()
+            if self.pending_blocks:
+                best_block = max(self.pending_blocks, key=lambda x: x.curvature)
+                self.chain.append(best_block)
+                print(f"[区块链] 接受最优区块：曲率 {best_block.curvature:.4f} 来自 {best_block.miner_id}")
+            print(f"[区块链] 本轮共收到 {len(self.pending_blocks)} 个候选区块")
+        print("[区块链] 挖矿结束广播")
 
-    def mine_pending_transactions(self):
-        """修复挖矿逻辑"""
-        last_block = self.chain[-1]
-
-        verifier = UniqueEmbeddingVerifier(self.n, self.m, self.k, self.hardness)
-
-        # 获取嵌入参数和函数
-        if result := self.find_valid_embedding(verifier):
-            A, b, embed_func = result
-            new_proof = {
-                "A": A,
-                "b": b,
-                "manifold": verifier.manifold
-            }
-
-            new_block = Block(
-                index=last_block.index + 1,
-                timestamp=time.time(),
-                transactions=self.pending_transactions,
-                previous_hash=last_block.hash,
-                proof_data=new_proof
-            )
-
-            if self.validate_block(new_block, verifier):
-                self.chain.append(new_block)
-                self.pending_transactions = []
-                return new_block
-        return None
-
-    def find_valid_embedding(self, verifier):
-        """改进的嵌入搜索方法"""
-        for _ in range(1000):
-            A = np.random.randn(verifier.m, 2 * verifier.n) * 0.5 * self.difficulty
-            b = np.random.randn(verifier.m) * 0.1 * self.difficulty
-
-            embedded = verifier.manifold @ A.T + b
-
-            if (verifier._check_self_intersection(embedded) and
-                    verifier._check_curvature(embedded)):
-                return A, b, lambda x: x @ A.T + b
-        return None
-
-    def validate_block(self, block, verifier):
-        """改进的区块验证"""
-        # 验证哈希链
-        if block.previous_hash != self.chain[-1].hash:
-            return False
-
-        # 验证数学证明
-        try:
-            embedded = block.proof_data["manifold"] @ block.proof_data["A"].T + block.proof_data["b"]
-            return (verifier._check_self_intersection(embedded) and
-                    verifier._check_curvature(embedded))
-        except:
-            return False
+    def submit_block(self, block):
+        with self.lock:
+            if self.mining_event.is_set():
+                self.pending_blocks.append(block)
+                print(f"[矿工 {block.miner_id}] 提交候选区块，曲率 {block.curvature:.4f}")
+                return True
+        return False
 
 
-# 示例用法
-if __name__ == "__main__":
-    chain = Blockchain()
+class Miner:
+    def __init__(self, miner_id, blockchain):
+        self.id = miner_id
+        self.blockchain = blockchain
+        self.thread = None
 
-    # 添加测试交易
-    chain.add_transaction("Alice", "Bob", 5.0)
+    def start_mining(self):
+        def mining_process():
+            params = self.blockchain.verifier_params
+            while self.blockchain.mining_event.is_set():
+                verifier = UniqueEmbeddingVerifier(*params)
+                if solver := verifier.solve(search_scale=0.5):
+                    curvature = verifier.get_curvature()
+                    self.blockchain.submit_block(Block(curvature, self.id))
+                time.sleep(0.1)
 
-    # 挖矿
-    if new_block := chain.mine_pending_transactions():
-        print(f"新区块哈希: {new_block.hash[:16]}...")
-        print(f"包含交易数: {len(new_block.transactions)}")
-    else:
-        print("挖矿失败")
+        self.thread = threading.Thread(target=mining_process)
+        self.thread.start()
