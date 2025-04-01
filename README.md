@@ -74,6 +74,8 @@ def broadcast_stop(self):
    - 最优验证：max(curvature)
 4. **快速共识**：在单个区块时间窗口内完成最优选择
 
+![工作流程](https://via.placeholder.com/600x200?text=Competitive+Mining+Workflow)
+
 ## 性能优势对比
 
 | 特性                | 本方案                          | 传统PoW               |
